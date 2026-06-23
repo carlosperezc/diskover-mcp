@@ -1,0 +1,84 @@
+version: '2'
+services:
+  diskover-mcp:
+    build: /home/administrator/diskover-mcp        # path to the folder containing Dockerfile/server.py
+    container_name: diskover-mcp
+    environment:
+      - ES_HOST=elasticsearch    # must match your ES service name in this compose file
+      - ES_PORT=9200
+      - ES_INDEX=diskover-*      # adjust if your index naming differs
+      - ES_USE_SSL=false
+      - MCP_PORT=8005
+      # Only needed if you've enabled Elasticsearch security:
+      # - ES_USERNAME=elastic
+      # - ES_PASSWORD=changeme
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
+    ports:
+      - "8005:8005"
+    depends_on:
+      - diskover
+      - elasticsearch
+    restart: unless-stopped
+  diskover:
+    image: lscr.io/linuxserver/diskover
+    container_name: diskover
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=America/New_York
+      - ES_HOST=elasticsearch
+      - ES_PORT=9200
+      - ENABLE_CRON=true
+    volumes:
+      - /media/containerdata/diskover/config:/config
+      - /media/containerdata/diskover/data:/data
+      - /media/sf_DownloadNAS:/scan/Downloads:ro
+      - /media/sf_Books:/scan/Books:ro
+      - /media/sf_Dev:/scan/Dev:ro
+      - /media/sf_Movies:/scan/Movies/English:ro
+      - /media/sf_MoviesES:/scan/Movies/Spanish:ro
+      - /media/sf_MoviesFR:/scan/Movies/French:ro
+      - /media/sf_MoviesOther:/scan/Movies/Other:ro
+      - /media/containerdata:/scan/Containerdata:ro
+      - /media/sf_Backups:/scan/Backups:ro
+      - /media/sf_Music:/scan/Music:ro
+      - /media/sf_TVShows:/scan/TVShows/A:ro
+      - /media/sf_TVShowsB:/scan/TVShows/B:ro
+      - /media/sf_owncloud:/scan/Owncloud:ro
+      - /media/transmissionincompletefiles:/scan/transmissionincompletefiles:ro
+      - /media/backupserver:/scan/backupserver:ro
+    ports:
+      - 8089:80
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
+    mem_limit: 4096m
+    restart: unless-stopped
+    depends_on:
+      - elasticsearch
+  elasticsearch:
+    container_name: elasticsearch
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.17.22
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - bootstrap.memory_lock=true
+      - "ES_JAVA_OPTS=-Xms1g -Xmx1g"
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    volumes:
+      - /media/containerdata/diskover/elasticsearch:/usr/share/elasticsearch/data
+      
+    ports:
+      - 9200:9200
+    depends_on:
+      - elasticsearch-helper
+    restart: unless-stopped
+  elasticsearch-helper:
+    image: alpine
+    command: sh -c "sysctl -w vm.max_map_count=262144"
+    privileged: true
