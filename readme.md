@@ -87,7 +87,7 @@ docker exec -u abc -d diskover python3 /app/diskover/diskover.py -i diskover-dow
 
 ## Mount backupserverFS
 ```
-sudo sshfs qnap@192.168.0.190:/nas01 /media/backupserver
+sudo sshfs qnap@192.168.0.190:/nas01 /media/backupserver -o allow_other -o uid=$(id -u) -o gid=$(id -g) -o umask=000
 ```
 
 ## Sanity-checking before wiring up Claude Desktop
